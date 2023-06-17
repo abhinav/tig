@@ -20,19 +20,6 @@
  */
 
 bool
-string_isnumber(const char *str)
-{
-	int pos;
-
-	for (pos = 0; str[pos]; pos++) {
-		if (!isdigit((unsigned char)str[pos]))
-			return false;
-	}
-
-	return pos > 0;
-}
-
-bool
 iscommit(const char *str)
 {
 	int pos;
