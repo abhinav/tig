@@ -36,3 +36,5 @@ tig-*.tar.gz.sha256
 tig.spec
 tools/doc-gen
 tig.dSYM
+/zig-out
+/zig-cache
