@@ -11,23 +11,30 @@ pub fn build(b: *std.Build) !void {
         .root_source_file = .{ .path = "src/zit.zig" },
     });
 
+    const tig = b.addObject(.{
+        .name = "tig",
+        .target = target,
+        .optimize = optimize,
+    });
+    tig.defineCMacro("SYSCONFDIR", "\"/etc\"");
+    tig.defineCMacro("TIG_VERSION", "\"1.2.3-dev\"");
+    tig.defineCMacro("UINT16_MAX", "65535");
+    tig.defineCMacro("false", "0");
+    tig.defineCMacro("true", "1");
+    tig.addIncludePath(.{ .path = "." });
+    tig.addIncludePath(.{ .path = "compat" });
+    tig.addIncludePath(.{ .path = "include" });
+    tig.addCSourceFiles(&c_source_files, &.{});
+    tig.linkLibC();
+
     const exe = b.addExecutable(.{
         .name = "tig",
         .target = target,
         .optimize = optimize,
-        .link_libc = true,
     });
     exe.addObject(zit);
-    exe.defineCMacro("SYSCONFDIR", "\"/etc\"");
-    exe.defineCMacro("TIG_VERSION", "\"1.2.3-dev\"");
-    exe.defineCMacro("UINT16_MAX", "65535");
-    exe.defineCMacro("false", "0");
-    exe.defineCMacro("true", "1");
+    exe.addObject(tig);
     exe.linkSystemLibrary("ncursesw");
-    exe.addIncludePath(".");
-    exe.addIncludePath("compat");
-    exe.addIncludePath("include");
-    exe.addCSourceFiles(&c_source_files, &.{"-std=c99"});
     b.installArtifact(exe);
 
     const run_cmd = b.addRunArtifact(exe);
