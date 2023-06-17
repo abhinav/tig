@@ -11,11 +11,20 @@ pub fn build(b: *std.Build) !void {
         .root_source_file = .{ .path = "src/zit.zig" },
     });
 
+    const make_builtin_config = b.addSystemCommand(&.{"./tools/make-builtin-config.sh"});
+    make_builtin_config.addFileSourceArg(std.Build.FileSource.relative("tigrc"));
+    // Hack: captureStdOut does not allow specifying the name of the file.
+    // As a workaround, change the configuration of the Output object
+    // after having captureStdOut wire it up.
+    const builtin_config = make_builtin_config.captureStdOut();
+    make_builtin_config.captured_stdout.?.basename = "builtin-config.c";
+
     const tig = b.addObject(.{
         .name = "tig",
         .target = target,
         .optimize = optimize,
     });
+    tig.step.dependOn(&make_builtin_config.step);
     tig.defineCMacro("SYSCONFDIR", "\"/etc\"");
     tig.defineCMacro("TIG_VERSION", "\"1.2.3-dev\"");
     tig.defineCMacro("UINT16_MAX", "65535");
@@ -25,12 +34,14 @@ pub fn build(b: *std.Build) !void {
     tig.addIncludePath(.{ .path = "compat" });
     tig.addIncludePath(.{ .path = "include" });
     tig.addCSourceFiles(&c_source_files, &.{});
+    tig.addCSourceFile(.{ .file = builtin_config, .flags = &.{} });
     tig.linkLibC();
 
     const exe = b.addExecutable(.{
         .name = "tig",
         .target = target,
         .optimize = optimize,
+        .single_threaded = true,
     });
     exe.addObject(zit);
     exe.addObject(tig);
@@ -64,9 +75,6 @@ const c_source_files = [_][]const u8{
     "compat/strndup.c",
     "compat/utf8proc.c",
     "compat/wordexp.c",
-
-    // TODO: generate from make-builtin-config.sh.
-    "src/builtin-config.c",
 
     "src/apps.c",
     "src/argv.c",
