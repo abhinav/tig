@@ -9,7 +9,11 @@ pub fn build(b: *std.Build) !void {
         .target = target,
         .optimize = optimize,
         .root_source_file = .{ .path = "src/zit.zig" },
+        .link_libc = true,
     });
+    zit.addIncludePath(.{ .path = "." });
+    zit.addIncludePath(.{ .path = "compat" });
+    zit.addIncludePath(.{ .path = "include" });
 
     const make_builtin_config = b.addSystemCommand(&.{"./tools/make-builtin-config.sh"});
     make_builtin_config.addFileSourceArg(std.Build.FileSource.relative("tigrc"));
