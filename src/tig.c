@@ -798,8 +798,7 @@ handle_git_prefix(void)
 	return SUCCESS;
 }
 
-int
-main(int argc, const char *argv[])
+int tig_main(int argc, const char *argv[])
 {
 	const char *codeset = ENCODING_UTF8;
 	bool pager_mode = !isatty(STDIN_FILENO);

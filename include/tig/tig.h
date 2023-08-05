@@ -178,6 +178,8 @@
 
 void TIG_NORETURN usage(const char *message);
 
+int tig_main(int argc, const char *argv[]);
+
 /*
  * Global view definition.
  */
