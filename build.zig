@@ -119,8 +119,8 @@ pub fn build(b: *std.Build) !void {
     test_graph.linkSystemLibrary("ncursesw");
 
     const integration_tests = b.addExecutable(.{
-        .name = "integration-tests",
-        .root_source_file = .{ .path = "test/run.zig" },
+        .name = "integration-test-runner",
+        .root_source_file = .{ .path = "test/integration.zig" },
         .target = target,
         .optimize = optimize,
         .link_libc = true,

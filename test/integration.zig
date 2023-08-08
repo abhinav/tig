@@ -55,9 +55,18 @@ pub fn run(alloc: std.mem.Allocator) !void {
     var test_walk = try test_dir.walk(alloc);
     defer test_walk.deinit();
 
+    var stdout_buffer = std.io.bufferedWriter(std.io.getStdOut().writer());
+    defer stdout_buffer.flush() catch unreachable;
+    var stdout = stdout_buffer.writer();
+
     while (try test_walk.next()) |ent| {
         if (ent.kind != .file) continue;
         if (!std.mem.endsWith(u8, ent.path, "-test")) continue;
+
+        if (params.list) {
+            try stdout.print("{s}\n", .{ent.path});
+            continue;
+        }
 
         std.log.debug("{s}", .{ent.path});
         var child = std.ChildProcess.init(&.{ent.path}, alloc);
@@ -74,19 +83,23 @@ pub fn run(alloc: std.mem.Allocator) !void {
     }
 
     // TODO: port show-results into this program
-    var child = std.ChildProcess.init(&.{"tools/show-results.sh"}, alloc);
-    child.cwd = std.fs.path.dirname(test_dir_abs) orelse unreachable;
-    child.stdout_behavior = .Inherit;
-    child.stderr_behavior = .Inherit;
-    const term = try child.spawnAndWait();
-    try exitOk(term);
+    if (!params.list) {
+        var child = std.ChildProcess.init(&.{"tools/show-results.sh"}, alloc);
+        child.cwd = std.fs.path.dirname(test_dir_abs) orelse unreachable;
+        child.stdout_behavior = .Inherit;
+        child.stderr_behavior = .Inherit;
+        const term = try child.spawnAndWait();
+        try exitOk(term);
+    }
 }
 
 /// Params defines the command line arguments.
 const Params = struct {
     pub const Error = error{Explained};
 
-    dir: []const u8, // destination directory
+    dir: []const u8, // directory containing the tests
+    list: bool, // list the tests and exit
+
     tig: ?[]const u8, // path to the tig executable
     test_graph: ?[]const u8, // path to the test-graph binary
 
@@ -95,12 +108,16 @@ const Params = struct {
         var dir: ?[]const u8 = null;
         var tig: ?[]const u8 = null;
         var test_graph: ?[]const u8 = null;
+        var list = false;
+
         while (args.next()) |arg| {
             if (std.mem.eql(u8, arg, "-d")) {
                 dir = args.next() orelse {
                     std.log.err("expected an argument after -d", .{});
                     return error.Explained;
                 };
+            } else if (std.mem.eql(u8, arg, "--list")) {
+                list = true;
             } else if (std.mem.eql(u8, arg, "--tig")) {
                 tig = args.next() orelse {
                     std.log.err("expected an argument after --tig", .{});
@@ -119,6 +136,7 @@ const Params = struct {
 
         return Params{
             .dir = dir orelse "test",
+            .list = list,
             .tig = tig,
             .test_graph = test_graph,
         };
