@@ -4,6 +4,36 @@ pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    const compat = b.addObject(.{
+        .name = "compat",
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    compat.addIncludePath(.{ .path = "compat" });
+    compat.addCSourceFiles(&.{
+        "compat/hashtab.c",
+        "compat/mkstemps.c",
+        "compat/setenv.c",
+        "compat/strndup.c",
+        "compat/utf8proc.c",
+        "compat/wordexp.c",
+    }, &.{});
+
+    const graph = b.addObject(.{
+        .name = "graph",
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    graph.addIncludePath(.{ .path = "." });
+    graph.addIncludePath(.{ .path = "include" });
+    graph.addCSourceFiles(&.{
+        "src/graph-v1.c",
+        "src/graph-v2.c",
+        "src/graph.c",
+    }, &.{});
+
     const zit = b.addObject(.{
         .name = "zit",
         .target = target,
@@ -12,7 +42,6 @@ pub fn build(b: *std.Build) !void {
         .link_libc = true,
     });
     zit.addIncludePath(.{ .path = "." });
-    zit.addIncludePath(.{ .path = "compat" });
     zit.addIncludePath(.{ .path = "include" });
 
     const make_builtin_config = b.addSystemCommand(&.{"./tools/make-builtin-config.sh"});
@@ -27,6 +56,7 @@ pub fn build(b: *std.Build) !void {
         .name = "tig",
         .target = target,
         .optimize = optimize,
+        .link_libc = true,
     });
     tig.step.dependOn(&make_builtin_config.step);
     tig.defineCMacro("SYSCONFDIR", "\"/etc\"");
@@ -35,11 +65,9 @@ pub fn build(b: *std.Build) !void {
     tig.defineCMacro("false", "0");
     tig.defineCMacro("true", "1");
     tig.addIncludePath(.{ .path = "." });
-    tig.addIncludePath(.{ .path = "compat" });
     tig.addIncludePath(.{ .path = "include" });
     tig.addCSourceFiles(&tig_c_files, &.{});
     tig.addCSourceFile(.{ .file = builtin_config, .flags = &.{} });
-    tig.linkLibC();
 
     const exe = b.addExecutable(.{
         .name = "tig",
@@ -49,6 +77,8 @@ pub fn build(b: *std.Build) !void {
     });
     exe.addObject(zit);
     exe.addObject(tig);
+    exe.addObject(compat);
+    exe.addObject(graph);
     exe.linkSystemLibrary("ncursesw");
     b.installArtifact(exe);
 
@@ -65,11 +95,28 @@ pub fn build(b: *std.Build) !void {
         .target = target,
         .optimize = optimize,
     });
-
     const run_unit_tests = b.addRunArtifact(unit_tests);
-
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_unit_tests.step);
+
+    // Needed for integration tests.
+    const test_graph = b.addExecutable(.{
+        .name = "test-graph",
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    test_graph.addIncludePath(.{ .path = "." });
+    test_graph.addIncludePath(.{ .path = "include" });
+    test_graph.addCSourceFiles(&.{
+        "test/tools/test-graph.c",
+        "src/string.c",
+        "src/util.c",
+        "src/io.c",
+    }, &.{});
+    test_graph.addObject(compat);
+    test_graph.addObject(graph);
+    test_graph.linkSystemLibrary("ncursesw");
 
     const integration_tests = b.addExecutable(.{
         .name = "integration-tests",
@@ -78,26 +125,6 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
         .link_libc = true,
     });
-
-    const test_graph = b.addExecutable(.{
-        .name = "test-graph",
-        .target = target,
-        .optimize = optimize,
-        .link_libc = true,
-    });
-    test_graph.addIncludePath(.{ .path = "." });
-    test_graph.addIncludePath(.{ .path = "compat" });
-    test_graph.addIncludePath(.{ .path = "include" });
-    test_graph.addCSourceFiles(&.{
-        "test/tools/test-graph.c",
-        "src/string.c",
-        "src/util.c",
-        "src/io.c",
-    }, &.{});
-    test_graph.addCSourceFiles(&graph_c_files, &.{});
-    test_graph.addCSourceFiles(&compat_c_files, &.{});
-    test_graph.linkSystemLibrary("ncursesw");
-
     const run_integration_tests = b.addRunArtifact(integration_tests);
     run_integration_tests.step.dependOn(&exe.step);
     run_integration_tests.step.dependOn(&test_graph.step);
@@ -117,25 +144,9 @@ pub fn build(b: *std.Build) !void {
     if (b.args) |args| {
         run_integration_tests.addArgs(args);
     }
-
     const integration_test_step = b.step("integration-test", "Run integration tests");
     integration_test_step.dependOn(&run_integration_tests.step);
 }
-
-const graph_c_files = [_][]const u8{
-    "src/graph-v1.c",
-    "src/graph-v2.c",
-    "src/graph.c",
-};
-
-const compat_c_files = [_][]const u8{
-    "compat/hashtab.c",
-    "compat/mkstemps.c",
-    "compat/setenv.c",
-    "compat/strndup.c",
-    "compat/utf8proc.c",
-    "compat/wordexp.c",
-};
 
 const tig_c_files = [_][]const u8{
     "src/apps.c",
@@ -174,4 +185,4 @@ const tig_c_files = [_][]const u8{
     "src/util.c",
     "src/view.c",
     "src/watch.c",
-} ++ graph_c_files ++ compat_c_files;
+};
