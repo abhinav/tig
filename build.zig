@@ -75,6 +75,7 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
         .single_threaded = true,
     });
+    exe.strip = optimize == .ReleaseFast or optimize == .ReleaseSmall;
     exe.addObject(zit);
     exe.addObject(tig);
     exe.addObject(compat);
