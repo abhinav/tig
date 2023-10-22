@@ -11,14 +11,14 @@ pub fn build(b: *std.Build) !void {
         .link_libc = true,
     });
     compat.addIncludePath(.{ .path = "compat" });
-    compat.addCSourceFiles(&.{
+    compat.addCSourceFiles(.{ .files = &.{
         "compat/hashtab.c",
         "compat/mkstemps.c",
         "compat/setenv.c",
         "compat/strndup.c",
         "compat/utf8proc.c",
         "compat/wordexp.c",
-    }, &.{});
+    } });
 
     const graph = b.addObject(.{
         .name = "graph",
@@ -28,11 +28,11 @@ pub fn build(b: *std.Build) !void {
     });
     graph.addIncludePath(.{ .path = "." });
     graph.addIncludePath(.{ .path = "include" });
-    graph.addCSourceFiles(&.{
+    graph.addCSourceFiles(.{ .files = &.{
         "src/graph-v1.c",
         "src/graph-v2.c",
         "src/graph.c",
-    }, &.{});
+    } });
 
     const zit = b.addObject(.{
         .name = "zit",
@@ -43,6 +43,8 @@ pub fn build(b: *std.Build) !void {
     });
     zit.addIncludePath(.{ .path = "." });
     zit.addIncludePath(.{ .path = "include" });
+    // TODO: Use zit.getEmittedH, and then dirname of that
+    // (https://github.com/ziglang/zig/issues/17411).
 
     const make_builtin_config = b.addSystemCommand(&.{"./tools/make-builtin-config.sh"});
     make_builtin_config.addFileSourceArg(std.Build.FileSource.relative("tigrc"));
@@ -66,7 +68,7 @@ pub fn build(b: *std.Build) !void {
     tig.defineCMacro("true", "1");
     tig.addIncludePath(.{ .path = "." });
     tig.addIncludePath(.{ .path = "include" });
-    tig.addCSourceFiles(&tig_c_files, &.{});
+    tig.addCSourceFiles(.{ .files = &tig_c_files });
     tig.addCSourceFile(.{ .file = builtin_config, .flags = &.{} });
 
     const exe = b.addExecutable(.{
@@ -109,12 +111,12 @@ pub fn build(b: *std.Build) !void {
     });
     test_graph.addIncludePath(.{ .path = "." });
     test_graph.addIncludePath(.{ .path = "include" });
-    test_graph.addCSourceFiles(&.{
+    test_graph.addCSourceFiles(.{ .files = &.{
         "test/tools/test-graph.c",
         "src/string.c",
         "src/util.c",
         "src/io.c",
-    }, &.{});
+    } });
     test_graph.addObject(compat);
     test_graph.addObject(graph);
     test_graph.linkSystemLibrary("ncursesw");
