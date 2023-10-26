@@ -83,6 +83,7 @@ pub fn build(b: *std.Build) !void {
     exe.linkLibrary(compat);
     exe.linkLibrary(graph);
     exe.linkSystemLibrary("ncursesw");
+    exe.linkSystemLibrary("iconv");
     b.installArtifact(exe);
 
     const run_cmd = b.addRunArtifact(exe);
@@ -120,6 +121,7 @@ pub fn build(b: *std.Build) !void {
     test_graph.linkLibrary(compat);
     test_graph.linkLibrary(graph);
     test_graph.linkSystemLibrary("ncursesw");
+    test_graph.linkSystemLibrary("iconv");
 
     const integration_tests = b.addExecutable(.{
         .name = "integration-test-runner",
