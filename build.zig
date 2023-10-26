@@ -4,7 +4,7 @@ pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const compat = b.addObject(.{
+    const compat = b.addStaticLibrary(.{
         .name = "compat",
         .target = target,
         .optimize = optimize,
@@ -20,7 +20,7 @@ pub fn build(b: *std.Build) !void {
         "compat/wordexp.c",
     } });
 
-    const graph = b.addObject(.{
+    const graph = b.addStaticLibrary(.{
         .name = "graph",
         .target = target,
         .optimize = optimize,
@@ -34,7 +34,7 @@ pub fn build(b: *std.Build) !void {
         "src/graph.c",
     } });
 
-    const zit = b.addObject(.{
+    const zit = b.addStaticLibrary(.{
         .name = "zit",
         .target = target,
         .optimize = optimize,
@@ -54,7 +54,7 @@ pub fn build(b: *std.Build) !void {
     const builtin_config = make_builtin_config.captureStdOut();
     make_builtin_config.captured_stdout.?.basename = "builtin-config.c";
 
-    const tig = b.addObject(.{
+    const tig = b.addStaticLibrary(.{
         .name = "tig",
         .target = target,
         .optimize = optimize,
@@ -78,10 +78,10 @@ pub fn build(b: *std.Build) !void {
         .single_threaded = true,
     });
     exe.strip = optimize == .ReleaseFast or optimize == .ReleaseSmall;
-    exe.addObject(zit);
-    exe.addObject(tig);
-    exe.addObject(compat);
-    exe.addObject(graph);
+    exe.linkLibrary(zit);
+    exe.linkLibrary(tig);
+    exe.linkLibrary(compat);
+    exe.linkLibrary(graph);
     exe.linkSystemLibrary("ncursesw");
     b.installArtifact(exe);
 
@@ -117,8 +117,8 @@ pub fn build(b: *std.Build) !void {
         "src/util.c",
         "src/io.c",
     } });
-    test_graph.addObject(compat);
-    test_graph.addObject(graph);
+    test_graph.linkLibrary(compat);
+    test_graph.linkLibrary(graph);
     test_graph.linkSystemLibrary("ncursesw");
 
     const integration_tests = b.addExecutable(.{
