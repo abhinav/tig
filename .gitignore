@@ -37,4 +37,4 @@ tig.spec
 tools/doc-gen
 tig.dSYM
 /zig-out
-/zig-cache
+/.zig-cache

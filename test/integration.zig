@@ -46,12 +46,11 @@ pub fn run(alloc: std.mem.Allocator) !void {
         try prependPathDir(alloc, test_graph_dir);
     }
 
-    const test_dir_abs = try cwd.realpathAlloc(alloc, params.dir);
-    defer alloc.free(test_dir_abs);
+    var test_dir = try cwd.openDir(params.dir, .{ .iterate = true });
+    defer test_dir.close();
 
-    try std.process.changeCurDir(test_dir_abs);
+    try test_dir.setAsCwd();
 
-    const test_dir = try std.fs.openIterableDirAbsolute(test_dir_abs, .{});
     var test_walk = try test_dir.walk(alloc);
     defer test_walk.deinit();
 
@@ -69,7 +68,7 @@ pub fn run(alloc: std.mem.Allocator) !void {
         }
 
         std.log.debug("{s}", .{ent.path});
-        var child = std.ChildProcess.init(&.{ent.path}, alloc);
+        var child = std.process.Child.init(&.{ent.path}, alloc);
         child.stdout_behavior = .Inherit;
         child.stderr_behavior = .Inherit;
         const term = try child.spawnAndWait();
@@ -84,8 +83,16 @@ pub fn run(alloc: std.mem.Allocator) !void {
 
     // TODO: port show-results into this program
     if (!params.list) {
-        var child = std.ChildProcess.init(&.{"tools/show-results.sh"}, alloc);
-        child.cwd = std.fs.path.dirname(test_dir_abs) orelse unreachable;
+        const show_results = try test_dir.realpathAlloc(alloc, "tools/show-results.sh");
+        defer alloc.free(show_results);
+
+        // foo/test/tools/show-results.sh => foo
+        const tools_dir = std.fs.path.dirname(show_results) orelse unreachable;
+        const test_dir_path = std.fs.path.dirname(tools_dir) orelse unreachable;
+        const root_dir = std.fs.path.dirname(test_dir_path) orelse unreachable;
+
+        var child = std.process.Child.init(&.{show_results}, alloc);
+        child.cwd = root_dir;
         child.stdout_behavior = .Inherit;
         child.stderr_behavior = .Inherit;
         const term = try child.spawnAndWait();
@@ -143,7 +150,7 @@ const Params = struct {
     }
 };
 
-fn exitOk(term: std.ChildProcess.Term) !void {
+fn exitOk(term: std.process.Child.Term) !void {
     switch (term) {
         .Exited => |code| if (code != 0) {
             return error.NonZeroStatus;

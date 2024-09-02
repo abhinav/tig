@@ -10,7 +10,7 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
         .link_libc = true,
     });
-    compat.addIncludePath(.{ .path = "compat" });
+    compat.addIncludePath(b.path("compat"));
     compat.addCSourceFiles(.{ .files = &.{
         "compat/hashtab.c",
         "compat/mkstemps.c",
@@ -26,8 +26,8 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
         .link_libc = true,
     });
-    graph.addIncludePath(.{ .path = "." });
-    graph.addIncludePath(.{ .path = "include" });
+    graph.addIncludePath(b.path("."));
+    graph.addIncludePath(b.path("include"));
     graph.addCSourceFiles(.{ .files = &.{
         "src/graph-v1.c",
         "src/graph-v2.c",
@@ -38,16 +38,16 @@ pub fn build(b: *std.Build) !void {
         .name = "zit",
         .target = target,
         .optimize = optimize,
-        .root_source_file = .{ .path = "src/zit.zig" },
+        .root_source_file = b.path("src/zit.zig"),
         .link_libc = true,
     });
-    zit.addIncludePath(.{ .path = "." });
-    zit.addIncludePath(.{ .path = "include" });
+    zit.addIncludePath(b.path("."));
+    zit.addIncludePath(b.path("include"));
     // TODO: Use zit.getEmittedH, and then dirname of that
     // (https://github.com/ziglang/zig/issues/17411).
 
     const make_builtin_config = b.addSystemCommand(&.{"./tools/make-builtin-config.sh"});
-    make_builtin_config.addFileSourceArg(std.Build.FileSource.relative("tigrc"));
+    make_builtin_config.addFileArg(b.path("tigrc"));
     // Hack: captureStdOut does not allow specifying the name of the file.
     // As a workaround, change the configuration of the Output object
     // after having captureStdOut wire it up.
@@ -66,8 +66,8 @@ pub fn build(b: *std.Build) !void {
     tig.defineCMacro("UINT16_MAX", "65535");
     tig.defineCMacro("false", "0");
     tig.defineCMacro("true", "1");
-    tig.addIncludePath(.{ .path = "." });
-    tig.addIncludePath(.{ .path = "include" });
+    tig.addIncludePath(b.path("."));
+    tig.addIncludePath(b.path("include"));
     tig.addCSourceFiles(.{ .files = &tig_c_files });
     tig.addCSourceFile(.{ .file = builtin_config, .flags = &.{} });
 
@@ -76,8 +76,8 @@ pub fn build(b: *std.Build) !void {
         .target = target,
         .optimize = optimize,
         .single_threaded = true,
+        .strip = optimize == .ReleaseFast or optimize == .ReleaseSmall,
     });
-    exe.strip = optimize == .ReleaseFast or optimize == .ReleaseSmall;
     exe.linkLibrary(zit);
     exe.linkLibrary(tig);
     exe.linkLibrary(compat);
@@ -95,7 +95,7 @@ pub fn build(b: *std.Build) !void {
     run_step.dependOn(&run_cmd.step);
 
     const unit_tests = b.addTest(.{
-        .root_source_file = .{ .path = "src/zit.zig" },
+        .root_source_file = b.path("src/zit.zig"),
         .target = target,
         .optimize = optimize,
     });
@@ -110,8 +110,8 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
         .link_libc = true,
     });
-    test_graph.addIncludePath(.{ .path = "." });
-    test_graph.addIncludePath(.{ .path = "include" });
+    test_graph.addIncludePath(b.path("."));
+    test_graph.addIncludePath(b.path("include"));
     test_graph.addCSourceFiles(.{ .files = &.{
         "test/tools/test-graph.c",
         "src/string.c",
@@ -125,7 +125,7 @@ pub fn build(b: *std.Build) !void {
 
     const integration_tests = b.addExecutable(.{
         .name = "integration-test-runner",
-        .root_source_file = .{ .path = "test/integration.zig" },
+        .root_source_file = b.path("test/integration.zig"),
         .target = target,
         .optimize = optimize,
         .link_libc = true,
